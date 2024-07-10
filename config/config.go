@@ -1,6 +1,7 @@
 package config
 
 import (
+	"doglog/consts"
 	"fmt"
 	"github.com/DataDog/datadog-api-client-go/v2/api/datadogV2"
 	"gopkg.in/ini.v1"
@@ -10,13 +11,6 @@ import (
 )
 
 const NoFormatDefined = "No Formats Defined>>"
-
-const FullMessageField = "full_message"
-const LevelField = "level"
-const MessageField = "message"
-const ClassnameField = "classname"
-const ThreadnameField = "threadname"
-const Timestamp = "timestamp"
 
 const formatsSection string = "formats" // [formats]
 const serverSection string = "server"   // [server]
@@ -76,12 +70,11 @@ func (c *IniFile) Formats() (formats []FormatDefinition) {
 func (c *IniFile) Fields() (fields map[string][]string) {
 	if storedFields == nil {
 		storedFields = make(map[string][]string)
-		storedFields[LevelField] = []string{"_Status", "level", "status", "loglevel", "log_status", "LogLevel", "severity"}
-		storedFields[MessageField] = []string{"_Message", "message", "msg", "textPayload", "Message"}
-		storedFields[FullMessageField] = []string{"full_message", "original_message", "_raw"}
-		storedFields[ClassnameField] = []string{"classname", "logger_name", "LoggerName", "component", "name"}
-		storedFields[ThreadnameField] = []string{"thread_name"}
-		storedFields[Timestamp] = []string{"_Timestamp", "timestamp"}
+		storedFields[consts.ComputedLevelField] = []string{consts.DatadogStatus, "level", "status", "loglevel", "log_status", "LogLevel", "severity"}
+		storedFields[consts.ComputedMessageField] = []string{consts.DatadogMessage, "message", "msg", "textPayload", "Message"}
+		storedFields[consts.ComputedClassNameField] = []string{"classname", "logger_name", "LoggerName", "component", "name"}
+		storedFields[consts.ComputedThreadNameField] = []string{"threadname", "thread_name"}
+		storedFields[consts.ComputedTimestampField] = []string{consts.DatadogTimestamp, "timestamp"}
 		for _, f := range c.ini.Section(fieldSection).Keys() {
 			name := f.Name()
 			value := f.Value()
@@ -96,6 +89,18 @@ func (c *IniFile) Fields() (fields map[string][]string) {
 	return storedFields
 }
 
+func (c *IniFile) AggregateFields(msg datadogV2.Log) {
+	if msg.AdditionalProperties != nil {
+		fieldMappings := c.Fields()
+		for k := range fieldMappings {
+			value, ok := c.MapField(msg, k)
+			if ok {
+				msg.AdditionalProperties[k] = value
+			}
+		}
+	}
+}
+
 // MapField Pull a field from the 'fields' map, using field mappings as available
 func (c *IniFile) MapField(msg datadogV2.Log, field string) (string, bool) {
 	fieldMappings := c.Fields()
@@ -108,6 +113,12 @@ func (c *IniFile) MapField(msg datadogV2.Log, field string) (string, bool) {
 	for _, f := range fieldList {
 		value, ok := msg.AdditionalProperties[f]
 		if ok {
+			switch value.(type) {
+			case string:
+				return value.(string), true
+			case *string:
+				return *(value.(*string)), true
+			}
 			return value.(string), true
 		}
 	}
@@ -118,16 +129,16 @@ func (c *IniFile) MapField(msg datadogV2.Log, field string) (string, bool) {
 func readConfig(configPath string) (cfg *ini.File, err error) {
 	configPath, err = filepath.Abs(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("configuration file not found at %s", configPath)
+		return nil, fmt.Errorf("configuration file not found at %s - %s", configPath, err)
 	}
 
 	if _, err2 := os.Stat(configPath); err2 != nil {
-		return nil, fmt.Errorf("configuration file not found or not readable at %s", configPath)
+		return nil, fmt.Errorf("configuration file not found or not readable at %s - %s", configPath, err2)
 	}
 
 	cfg, err = ini.Load(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("configuration file cannot be parsed at %s", configPath)
+		return nil, fmt.Errorf("configuration file cannot be parsed at %s - %s", configPath, err)
 	}
 
 	return cfg, nil
