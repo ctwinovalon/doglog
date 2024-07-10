@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/DataDog/datadog-api-client-go/v2/api/datadogV2"
 	"gopkg.in/ini.v1"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ const FullMessageField = "full_message"
 const LevelField = "level"
 const MessageField = "message"
 const ClassnameField = "classname"
+const Timestamp = "timestamp"
 
 const formatsSection string = "formats" // [formats]
 const serverSection string = "server"   // [server]
@@ -73,10 +75,11 @@ func (c *IniFile) Formats() (formats []FormatDefinition) {
 func (c *IniFile) Fields() (fields map[string][]string) {
 	if storedFields == nil {
 		storedFields = make(map[string][]string)
-		storedFields[LevelField] = []string{"level", "status", "loglevel", "log_status"}
-		storedFields[MessageField] = []string{"message", "msg"}
-		storedFields[FullMessageField] = []string{"full_message", "original_message"}
-		storedFields[ClassnameField] = []string{"logger_name"}
+		storedFields[LevelField] = []string{"_Status", "level", "status", "loglevel", "log_status"}
+		storedFields[MessageField] = []string{"_Message", "message", "msg", "textPayload"}
+		storedFields[FullMessageField] = []string{"full_message", "original_message", "_raw"}
+		storedFields[ClassnameField] = []string{"classname", "logger_name"}
+		storedFields[Timestamp] = []string{"_Timestamp", "timestamp"}
 		for _, f := range c.ini.Section(fieldSection).Keys() {
 			name := f.Name()
 			value := f.Value()
@@ -92,21 +95,21 @@ func (c *IniFile) Fields() (fields map[string][]string) {
 }
 
 // MapField Pull a field from the 'fields' map, using field mappings as available
-func (c *IniFile) MapField(fields map[string]string, field string) (string, bool) {
+func (c *IniFile) MapField(msg datadogV2.Log, field string) (string, bool) {
 	fieldMappings := c.Fields()
 	fieldList, ok := fieldMappings[field]
-	if ok {
-		for _, f := range fieldList {
-			value, ok := fields[f]
-			if ok {
-				return value, true
-			}
-		}
-		return "", false
-	} else {
-		value, ok := fields[field]
-		return value, ok
+	if !ok {
+		fieldList = make([]string, 1)
+		fieldList[0] = field
 	}
+
+	for _, f := range fieldList {
+		value, ok := msg.AdditionalProperties[f]
+		if ok {
+			return value.(string), true
+		}
+	}
+	return "", false
 }
 
 // Reads the configuration file. The configuration is stored in a INI style file.

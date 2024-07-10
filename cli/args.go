@@ -36,6 +36,7 @@ type Options struct {
 	json         bool
 	serverConfig *config.IniFile
 	color        bool
+	verbose      bool
 }
 
 // ParseArgs parses the command-line arguments.
@@ -55,6 +56,7 @@ func ParseArgs() *Options {
 	end := parser.String("", "end", &argparse.Options{Required: false, Help: "Ending time to search from. Allows variable formats, including '6:45am' or '2019-01-04 12:30:00'. Defaults to now if --start is provided but no --end."})
 	json := parser.Flag("j", "json", &argparse.Options{Required: false, Help: "Output messages in json format. Shows the modified log message, not the untouched message from Datadog. Useful in understanding the fields available when creating Format templates or for further processing."})
 	noColor := parser.Flag("", "no-colors", &argparse.Options{Required: false, Help: "Don't use colors in output."})
+	verbose := parser.Flag("v", "verbose", &argparse.Options{Required: false, Help: "Generate verbose debug output."})
 
 	if err := parser.Parse(os.Args); err != nil {
 		invalidArgs(parser, err, "")
@@ -93,6 +95,7 @@ func ParseArgs() *Options {
 		endDate:    endDate,
 		json:       *json,
 		color:      !*noColor && isTty(),
+		verbose:    *verbose,
 	}
 
 	// Read the configuration file

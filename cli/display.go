@@ -5,6 +5,7 @@ import (
 	"doglog/config"
 	"encoding/json"
 	"fmt"
+	"github.com/DataDog/datadog-api-client-go/v2/api/datadogV2"
 	"github.com/Masterminds/sprig/v3"
 	"strings"
 	"text/template"
@@ -34,15 +35,13 @@ const infoLevel = "INFO"
 const traceLevel = "TRACE"
 const warnLevel = "WARN"
 
-const longTimeFormat = "2006-01-02T15:04:05.000Z"
-
 // Format a log message into JSON.
-func formatJson(msg logMessage) string {
+func formatJson(msg datadogV2.Log) string {
 	var text string
 
-	buf, _ := json.Marshal(msg.fields)
+	buf, _ := json.Marshal(msg.AdditionalProperties)
 	text = strings.TrimRight(string(buf), "}")
-	buf, _ = json.Marshal(msg.tags)
+	buf, _ = json.Marshal(msg.GetAttributes().Tags)
 	text += ",\"tags\":"
 	text += string(buf)
 	text += "}"
@@ -53,16 +52,17 @@ func formatJson(msg logMessage) string {
 }
 
 // Print a single log message
-func printMessage(opts *Options, msg logMessage) {
+func printMessage(opts *Options, msg *datadogV2.Log) {
 	adjustMessage(opts, msg)
 
 	var text string
 
-	if opts.json {
-		text = msg.fields[jsonField]
+	jsonField := msg.AdditionalProperties[jsonField]
+	if opts.json && jsonField != nil {
+		text = jsonField.(string)
 	} else {
 		for _, f := range opts.serverConfig.Formats() {
-			text = tryFormat(msg, f.Name, f.Format)
+			text = tryFormat(*msg, f.Name, f.Format)
 			if len(text) > 0 {
 				break
 			}
@@ -74,92 +74,117 @@ func printMessage(opts *Options, msg logMessage) {
 			fmt.Println("stop")
 		}
 		fmt.Println(text)
-	} else {
+	} else if jsonField != nil {
 		// Last case fallback in case none of the formats (including the default) match
-		text = msg.fields[jsonField]
+		text = jsonField.(string)
 		fmt.Println(text)
 	}
 }
 
 // Try to apply a format template.
 // returns: empty string if the format failed.
-func tryFormat(msg logMessage, tmplName string, tmpl string) string {
+func tryFormat(msg datadogV2.Log, tmplName string, tmpl string) string {
 	var t = template.Must(template.New(tmplName).Funcs(sprig.TxtFuncMap()).Option("missingkey=error").Parse(tmpl))
 	var result bytes.Buffer
 
-	if err := t.Execute(&result, msg.fields); err == nil {
+	if err := t.Execute(&result, msg.AdditionalProperties); err == nil {
 		return result.String()
 	}
 
 	return ""
 }
 
-// Convert a timestamp to a long time string.
-func longTime(t time.Time) string {
-	t = t.In(time.Local)
-	return t.Format(longTimeFormat)
-}
-
 // "Cleanup" the log message and add helper fields.
-func adjustMessage(opts *Options, msg logMessage) {
+func adjustMessage(opts *Options, msg *datadogV2.Log) {
 	isTty := opts.color
-	requestPage := msg.fields[requestPageField]
-	if len(requestPage) > 1 && !strings.HasPrefix(requestPage, "/") {
-		msg.fields[requestPageField] = "/" + requestPage
+	if msg.AdditionalProperties == nil {
+		msg.AdditionalProperties = make(map[string]interface{})
+	}
+	additionalProperties := &msg.AdditionalProperties
+	if msg.Attributes.Attributes != nil {
+		for k, v := range msg.Attributes.Attributes {
+			(*additionalProperties)[k] = v
+		}
+	}
+	for k, v := range msg.AdditionalProperties {
+		switch v.(type) {
+		case map[string]interface{}:
+			for kk, vv := range v.(map[string]interface{}) {
+				msg.AdditionalProperties[kk] = vv
+			}
+			delete(msg.AdditionalProperties, k)
+		}
+	}
+	if msg.Attributes.Status != nil {
+		(*additionalProperties)["_Status"] = msg.Attributes.Status
+	}
+	if msg.Attributes.Service != nil {
+		(*additionalProperties)["_Service"] = msg.Attributes.Service
+	}
+	if msg.Attributes.Host != nil {
+		(*additionalProperties)["_Host"] = msg.Attributes.Host
+	}
+	if msg.Attributes.Timestamp != nil {
+		(*additionalProperties)["_Timestamp"] = msg.Attributes.Timestamp.Format(time.RFC3339)
 	}
 
-	timestamp := msg.timestamp
-	msg.fields[longTimestampField] = longTime(timestamp)
-
-	classname, _ := opts.serverConfig.MapField(msg.fields, "classname")
+	rpf := (*additionalProperties)[requestPageField]
+	if rpf != nil {
+		requestPage := rpf.(string)
+		if len(requestPage) > 1 && !strings.HasPrefix(requestPage, "/") {
+			rpf = "/" + requestPage
+		}
+	}
+	classname, _ := opts.serverConfig.MapField(*msg, "classname")
 	if len(classname) > 0 {
-		msg.fields[shortClassnameField] = createShortClassname(classname)
+		(*additionalProperties)[shortClassnameField] = createShortClassname(classname)
 	}
 
-	level := normalizeLevel(opts, msg)
+	level := normalizeLevel(opts, *msg)
+	(*additionalProperties)[computedLevelField] = level
 
-	constructMessageText(opts, msg)
+	constructMessageText(opts, *msg)
 
-	setupColors(isTty, level, msg)
+	setupColors(isTty, level, *msg)
 }
 
 // Set up the colors in the message structure.
-func setupColors(isTty bool, level string, msg logMessage) {
+func setupColors(isTty bool, level string, msg datadogV2.Log) {
 	if isTty {
 		computeLevelColor(level, msg)
 		// Add color escapes
-		msg.fields[blueField] = blueEsc
-		msg.fields[redField] = redEsc
-		msg.fields[greenField] = greenEsc
-		msg.fields[yellowField] = yellowEsc
-		msg.fields[greyField] = greyEsc
-		msg.fields[whiteField] = whiteEsc
-		msg.fields[cyanField] = cyanEsc
-		msg.fields[magentaField] = magentaEsc
-		msg.fields[resetField] = resetEsc
+		msg.AdditionalProperties[blueField] = blueEsc
+		msg.AdditionalProperties[redField] = redEsc
+		msg.AdditionalProperties[greenField] = greenEsc
+		msg.AdditionalProperties[yellowField] = yellowEsc
+		msg.AdditionalProperties[greyField] = greyEsc
+		msg.AdditionalProperties[whiteField] = whiteEsc
+		msg.AdditionalProperties[cyanField] = cyanEsc
+		msg.AdditionalProperties[magentaField] = magentaEsc
+		msg.AdditionalProperties[resetField] = resetEsc
 	} else {
 		// Add color escapes
-		msg.fields[blueField] = ""
-		msg.fields[redField] = ""
-		msg.fields[greenField] = ""
-		msg.fields[yellowField] = ""
-		msg.fields[greyField] = ""
-		msg.fields[whiteField] = ""
-		msg.fields[cyanField] = ""
-		msg.fields[magentaField] = ""
-		msg.fields[levelColorField] = ""
-		msg.fields[resetField] = ""
+		msg.AdditionalProperties[blueField] = ""
+		msg.AdditionalProperties[redField] = ""
+		msg.AdditionalProperties[greenField] = ""
+		msg.AdditionalProperties[yellowField] = ""
+		msg.AdditionalProperties[greyField] = ""
+		msg.AdditionalProperties[whiteField] = ""
+		msg.AdditionalProperties[cyanField] = ""
+		msg.AdditionalProperties[magentaField] = ""
+		msg.AdditionalProperties[levelColorField] = ""
+		msg.AdditionalProperties[resetField] = ""
 	}
 }
 
 // Construct the "best" version of the log messages main text. This will look in multiple fields, attempt to
 // append multi-line text (stacktraces) onto the message text, etc.
-func constructMessageText(opts *Options, msg logMessage) {
+func constructMessageText(opts *Options, msg datadogV2.Log) {
 	const nestedException = "; nested exception "
 	const newlineNnestedException = ";\nnested exception "
 
-	messageText, _ := opts.serverConfig.MapField(msg.fields, "message")
-	originalMessage, _ := opts.serverConfig.MapField(msg.fields, "full_message")
+	messageText, _ := opts.serverConfig.MapField(msg, "message")
+	originalMessage, _ := opts.serverConfig.MapField(msg, "full_message")
 	if len(messageText) == 0 {
 		messageText = originalMessage
 	}
@@ -175,18 +200,24 @@ func constructMessageText(opts *Options, msg logMessage) {
 			messageText = messageText + "\n" + strings.Join(extraInfo[1:len(extraInfo)-1], "\n")
 		}
 	}
-	msg.fields[jsonField] = formatJson(msg)
+	msg.AdditionalProperties[jsonField] = formatJson(msg)
 	if len(messageText) == 0 {
-		messageText = msg.fields[jsonField]
+		messageText = msg.AdditionalProperties[jsonField].(string)
 	}
 	// Replace \" with plain "
 	messageText = strings.ReplaceAll(messageText, "\\\"", "\"")
-	msg.fields[messageTextField] = messageText
+	msg.AdditionalProperties[messageTextField] = messageText
 }
 
 // Normalize the "level" of the message.
-func normalizeLevel(opts *Options, msg logMessage) string {
-	level, _ := opts.serverConfig.MapField(msg.fields, "level")
+func normalizeLevel(opts *Options, msg datadogV2.Log) string {
+	status := msg.GetAttributes().Status
+	level := ""
+	if status == nil {
+		level, _ = opts.serverConfig.MapField(msg, "level")
+	} else {
+		level = *status
+	}
 	level = strings.ToUpper(level)
 	if strings.HasPrefix(level, "E") {
 		level = errorLevel
@@ -201,12 +232,12 @@ func normalizeLevel(opts *Options, msg logMessage) string {
 	} else if strings.HasPrefix(level, "T") {
 		level = traceLevel
 	}
-	msg.fields[computedLevelField] = level
+	msg.AdditionalProperties[computedLevelField] = level
 	return level
 }
 
 // Compute the color that should be used to display the log level in the message output.
-func computeLevelColor(level string, msg logMessage) {
+func computeLevelColor(level string, msg datadogV2.Log) {
 	var levelColor string
 	switch level {
 	case debugLevel, traceLevel:
@@ -219,9 +250,9 @@ func computeLevelColor(level string, msg logMessage) {
 		levelColor = errorEsc
 	}
 	if len(levelColor) > 0 {
-		msg.fields[levelColorField] = levelColor
+		msg.AdditionalProperties[levelColorField] = levelColor
 	} else {
-		msg.fields[levelColorField] = ""
+		msg.AdditionalProperties[levelColorField] = ""
 	}
 }
 
