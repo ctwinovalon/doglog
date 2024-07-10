@@ -15,6 +15,7 @@ const FullMessageField = "full_message"
 const LevelField = "level"
 const MessageField = "message"
 const ClassnameField = "classname"
+const ThreadnameField = "threadname"
 const Timestamp = "timestamp"
 
 const formatsSection string = "formats" // [formats]
@@ -75,10 +76,11 @@ func (c *IniFile) Formats() (formats []FormatDefinition) {
 func (c *IniFile) Fields() (fields map[string][]string) {
 	if storedFields == nil {
 		storedFields = make(map[string][]string)
-		storedFields[LevelField] = []string{"_Status", "level", "status", "loglevel", "log_status"}
-		storedFields[MessageField] = []string{"_Message", "message", "msg", "textPayload"}
+		storedFields[LevelField] = []string{"_Status", "level", "status", "loglevel", "log_status", "LogLevel", "severity"}
+		storedFields[MessageField] = []string{"_Message", "message", "msg", "textPayload", "Message"}
 		storedFields[FullMessageField] = []string{"full_message", "original_message", "_raw"}
-		storedFields[ClassnameField] = []string{"classname", "logger_name"}
+		storedFields[ClassnameField] = []string{"classname", "logger_name", "LoggerName", "component", "name"}
+		storedFields[ThreadnameField] = []string{"thread_name"}
 		storedFields[Timestamp] = []string{"_Timestamp", "timestamp"}
 		for _, f := range c.ini.Section(fieldSection).Keys() {
 			name := f.Name()

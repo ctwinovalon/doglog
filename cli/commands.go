@@ -10,7 +10,7 @@ import (
 )
 
 // CommandListMessages Print out the log messages that match the search criteria.
-func listMessages(opts *Options) (nextId string, success bool) {
+func listMessages(opts *Options, cursor *string) (nextId *string, success bool) {
 	ctx := context.WithValue(
 		context.Background(),
 		datadog.ContextAPIKeys,
@@ -26,7 +26,8 @@ func listMessages(opts *Options) (nextId string, success bool) {
 
 	body := datadogV2.LogsListRequest{
 		Filter: &datadogV2.LogsQueryFilter{
-			From: datadog.PtrString("now-15m"),
+			Query: &opts.query,
+			From:  datadog.PtrString("now-15m"),
 			Indexes: []string{
 				"main",
 			},
@@ -36,7 +37,8 @@ func listMessages(opts *Options) (nextId string, success bool) {
 			Timezone: datadog.PtrString("GMT"),
 		},
 		Page: &datadogV2.LogsListRequestPage{
-			Limit: datadog.PtrInt32(2),
+			Limit:  datadog.PtrInt32(int32(opts.limit)),
+			Cursor: cursor,
 		},
 		Sort: datadogV2.LOGSSORT_TIMESTAMP_DESCENDING.Ptr(),
 	}
@@ -51,28 +53,29 @@ func listMessages(opts *Options) (nextId string, success bool) {
 	for paginationResult := range items {
 		if paginationResult.Error != nil {
 			_, _ = fmt.Fprintf(os.Stderr, ">>> Error when calling `LogsApi.ListLogs`: %v\n", paginationResult.Error)
-			return "", false
+			return nil, false
 		} else {
 			printMessage(opts, &paginationResult.Item)
 		}
 	}
 
-	return *body.Page.Cursor, true
+	return body.Page.Cursor, true
 }
 
 // CommandListMessages Print out the log messages that match the search criteria.
 func CommandListMessages(opts *Options, s *spinner.Spinner) bool {
+	var nextId *string
+	nextId = nil
 	result := false
 	for {
 		if s != nil {
 			s.Stop()
 		}
-		nextId, success := listMessages(opts)
-		result = success
+		nextId, result = listMessages(opts, nextId)
 		if s != nil {
 			s.Start()
 		}
-		if len(nextId) == 0 {
+		if nextId == nil {
 			break
 		} else {
 			DelayForSeconds(0.2)
