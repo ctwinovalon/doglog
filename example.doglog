@@ -1,0 +1,37 @@
+[server]
+api-key = #ADDME#
+application-key = #ADDME#
+
+# Fields from Datadog
+# __Status
+# __Service
+# __Host
+# __Timestamp
+# __Message
+
+# Default computed fields (if you don't define any below)
+# __level - normalized and uppercased
+# __message 
+# __json
+# __classname
+# __short_classname
+# __threadname
+# __timestamp
+
+[fields]
+__level = __Status, level, status, loglevel, log_status, LogLevel, severity
+__message = __Message, message, msg, textPayload, Message, full_message, original_message, _raw
+__classname = classname, logger_name, LoggerName, component, name
+__threadname = threadname, thread_name
+__timestamp = __Timestamp, timestamp
+__service = __Service, service
+
+[formats.short]
+java1 = {{.__timestamp}} {{._Level_color}}{{.__level | printf "%-5.5s"}}{{._Reset}} {{.__short_classname | printf "%-30.30s"}} -- {{._Level_color}}{{.__message}}{{._Reset}}
+minimal = {{.__timestamp}} {{._Level_color}}{{.__level | printf "%-5.5s"}} {{.__message}}{{._Reset}}
+
+[formats.long]
+java1 = {{.__timestamp}} {{.__service | printf "%-20.20s"}} {{._Level_color}}{{.__level | printf "%-5.5s"}}{{._Reset}} [{{.__threadname | printf "%-20.20s"}}] {{.__short_classname | printf "%-30.30s"}} -- {{._Level_color}}{{.__message}}{{._Reset}}
+java2 = {{.__timestamp}} {{.__service | printf "%-20.20s"}} {{._Level_color}}{{.__level | printf "%-5.5s"}}{{._Reset}} {{.__short_classname | printf "%-30.30s"}} -- {{._Level_color}}{{.__message}}{{._Reset}}
+java3 = {{.__timestamp}} {{.__service | printf "%-20.20s"}} {{._Level_color}}{{.__level | printf "%-5.5s"}}{{._Reset}} [{{.__threadname | printf "%-20.20s"}}] {{._Level_color}}{{.__message}}{{._Reset}}
+minimal = {{.__timestamp}} {{.__service | printf "%-20.20s"}} {{._Level_color}}{{.__level | printf "%-5.5s"}} {{.__message}}{{._Reset}}
