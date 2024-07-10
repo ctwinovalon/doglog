@@ -2,11 +2,10 @@ package cli
 
 import (
 	"context"
-	"fmt"
+	"doglog/log"
 	"github.com/DataDog/datadog-api-client-go/v2/api/datadog"
 	"github.com/DataDog/datadog-api-client-go/v2/api/datadogV2"
 	"github.com/briandowns/spinner"
-	"os"
 )
 
 // CommandListMessages Print out the log messages that match the search criteria.
@@ -16,33 +15,33 @@ func listMessages(opts *Options, cursor *string) (nextId *string, success bool) 
 		datadog.ContextAPIKeys,
 		map[string]datadog.APIKey{
 			"apiKeyAuth": {
-				Key: opts.serverConfig.ApiKey(),
+				Key: opts.ServerConfig.ApiKey(),
 			},
 			"appKeyAuth": {
-				Key: opts.serverConfig.ApplicationKey(),
+				Key: opts.ServerConfig.ApplicationKey(),
 			},
 		},
 	)
 
 	body := datadogV2.LogsListRequest{
 		Filter: &datadogV2.LogsQueryFilter{
-			Query:   &opts.query,
-			From:    &opts.startDate,
-			To:      &opts.endDate,
-			Indexes: opts.indexes,
+			Query:   &opts.Query,
+			From:    &opts.StartDate,
+			To:      &opts.EndDate,
+			Indexes: opts.Indexes,
 		},
 		Options: &datadogV2.LogsQueryOptions{
 			Timezone: datadog.PtrString("GMT"),
 		},
 		Page: &datadogV2.LogsListRequestPage{
-			Limit:  datadog.PtrInt32(int32(opts.limit)),
+			Limit:  datadog.PtrInt32(int32(opts.Limit)),
 			Cursor: cursor,
 		},
-		Sort: datadogV2.LOGSSORT_TIMESTAMP_DESCENDING.Ptr(),
+		Sort: datadogV2.LOGSSORT_TIMESTAMP_ASCENDING.Ptr(),
 	}
 
 	configuration := datadog.NewConfiguration()
-	configuration.Debug = opts.verbose
+	configuration.Debug = opts.Debug
 	apiClient := datadog.NewAPIClient(configuration)
 	api := datadogV2.NewLogsApi(apiClient)
 
@@ -50,7 +49,7 @@ func listMessages(opts *Options, cursor *string) (nextId *string, success bool) 
 
 	for paginationResult := range items {
 		if paginationResult.Error != nil {
-			_, _ = fmt.Fprintf(os.Stderr, ">>> Error when calling `LogsApi.ListLogs`: %v\n", paginationResult.Error)
+			log.Error(*opts, "Error when calling `LogsApi.ListLogs`: %v", paginationResult.Error)
 			return nil, false
 		} else {
 			printMessage(opts, &paginationResult.Item)

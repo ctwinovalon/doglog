@@ -2,6 +2,7 @@ package cli
 
 import (
 	"doglog/config"
+	"doglog/log"
 	"fmt"
 	"github.com/DataDog/datadog-api-client-go/v2/api/datadog"
 	"github.com/akamensky/argparse"
@@ -24,19 +25,19 @@ var defaultIndices = []string{"main"}
 
 // Options structure stores the command-line Options and values.
 type Options struct {
-	service      string
-	query        string
-	limit        int
+	Service      string
+	Query        string
+	Limit        int
 	Tail         bool
-	configPath   string
-	timeRange    int
-	startDate    string
-	endDate      string
-	json         bool
-	serverConfig *config.IniFile
-	color        bool
-	verbose      bool
-	indexes      []string
+	ConfigPath   string
+	TimeRange    int
+	StartDate    string
+	EndDate      string
+	Json         bool
+	ServerConfig *config.IniFile
+	Color        bool
+	Debug        bool
+	Indexes      []string
 }
 
 // ParseArgs parses the command-line arguments.
@@ -57,7 +58,7 @@ func ParseArgs() *Options {
 	end := parser.String("", "end", &argparse.Options{Required: false, Help: "Ending date/time to search from. Uses Datadog format. Defaults to 'now' if --start is provided but no --end", Default: "now"})
 	json := parser.Flag("j", "json", &argparse.Options{Required: false, Help: "Output messages in json format. Shows the modified log message, not the untouched message from Datadog. Useful in understanding the fields available when creating Format templates or for further processing."})
 	noColor := parser.Flag("", "no-colors", &argparse.Options{Required: false, Help: "Don't use colors in output."})
-	verbose := parser.Flag("v", "verbose", &argparse.Options{Required: false, Help: "Generate verbose debug output."})
+	debug := parser.Flag("d", "debug", &argparse.Options{Required: false, Help: "Generate debug output."})
 	indexes := parser.StringList("i", "indices", &argparse.Options{Required: false, Help: "The list of indices to search in Datadog. Repeat the parameter to add indices to the list", Default: defaultIndices})
 
 	if err := parser.Parse(os.Args); err != nil {
@@ -83,26 +84,28 @@ func ParseArgs() *Options {
 	}
 
 	opts := Options{
-		service:    *service,
-		query:      *query,
-		limit:      *limit,
+		Service:    *service,
+		Query:      *query,
+		Limit:      *limit,
 		Tail:       *tail,
-		configPath: *configPath,
-		startDate:  *start,
-		endDate:    *end,
-		json:       *json,
-		color:      !*noColor && isTty(),
-		verbose:    *verbose,
-		indexes:    *indexes,
+		ConfigPath: *configPath,
+		StartDate:  *start,
+		EndDate:    *end,
+		Json:       *json,
+		Color:      !*noColor && isTty(),
+		Debug:      *debug,
+		Indexes:    *indexes,
 	}
 
 	// Read the configuration file
-	conf, err := config.New(opts.configPath)
+	conf, err := config.New(opts.ConfigPath)
 	if err != nil {
 		invalidArgs(parser, err, "")
 	}
 
-	opts.serverConfig = conf
+	opts.ServerConfig = conf
+
+	log.Debug(opts, "Computed query '%s'", opts.Query)
 
 	return &opts
 }

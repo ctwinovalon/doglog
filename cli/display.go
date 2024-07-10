@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"doglog/config"
 	"doglog/consts"
+	"doglog/log"
 	"encoding/json"
 	"fmt"
 	"github.com/DataDog/datadog-api-client-go/v2/api/datadogV2"
@@ -53,18 +54,18 @@ func formatJson(msg datadogV2.Log) string {
 	return text
 }
 
-// Print a single log message
+// Print a single log message to stdout.
 func printMessage(opts *Options, msg *datadogV2.Log) {
 	adjustMap(opts, msg)
 
 	var text string
 
 	jsonField := msg.AdditionalProperties[consts.ComputedJsonField]
-	if opts.json && jsonField != nil {
+	if opts.Json && jsonField != nil {
 		text = jsonField.(string)
 	} else {
-		for _, f := range opts.serverConfig.Formats() {
-			text = tryFormat(*msg, f.Name, f.Format)
+		for _, f := range opts.ServerConfig.Formats() {
+			text = tryFormat(opts, *msg, f.Name, f.Format)
 			if len(text) > 0 {
 				break
 			}
@@ -85,12 +86,16 @@ func printMessage(opts *Options, msg *datadogV2.Log) {
 
 // Try to apply a format template.
 // returns: empty string if the format failed.
-func tryFormat(msg datadogV2.Log, tmplName string, tmpl string) string {
+func tryFormat(opts *Options, msg datadogV2.Log, tmplName string, tmpl string) string {
 	var t = template.Must(template.New(tmplName).Funcs(sprig.TxtFuncMap()).Option("missingkey=error").Parse(tmpl))
 	var result bytes.Buffer
 
-	if err := t.Execute(&result, msg.AdditionalProperties); err == nil {
+	err := t.Execute(&result, msg.AdditionalProperties)
+	if err == nil {
 		return result.String()
+	}
+	if opts.Debug {
+		log.Error(*opts, "failed to apply template '%s': %v", tmplName, err)
 	}
 
 	return ""
@@ -113,7 +118,7 @@ func flatten(src map[string]interface{}, dest map[string]interface{}) {
 
 // "Cleanup" the log message and add helper fields.
 func adjustMap(opts *Options, msg *datadogV2.Log) {
-	isTty := opts.color
+	isTty := opts.Color
 	if msg.AdditionalProperties == nil {
 		msg.AdditionalProperties = make(map[string]interface{})
 	}
@@ -137,7 +142,7 @@ func adjustMap(opts *Options, msg *datadogV2.Log) {
 		(*additionalProperties)[consts.DatadogMessage] = msg.Attributes.Message
 	}
 
-	opts.serverConfig.AggregateFields(*msg)
+	opts.ServerConfig.AggregateFields(*msg)
 
 	rpf := (*additionalProperties)[consts.RequestPageField]
 	if rpf != nil {
