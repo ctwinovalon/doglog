@@ -3,13 +3,14 @@ package cli
 import (
 	"context"
 	"doglog/log"
+	"doglog/options"
 	"github.com/DataDog/datadog-api-client-go/v2/api/datadog"
 	"github.com/DataDog/datadog-api-client-go/v2/api/datadogV2"
 	"github.com/briandowns/spinner"
 )
 
 // CommandListMessages Print out the log messages that match the search criteria.
-func listMessages(opts *Options, cursor *string) (nextId *string, success bool) {
+func listMessages(opts *options.Options, cursor *string) (nextId *string, success bool) {
 	ctx := context.WithValue(
 		context.Background(),
 		datadog.ContextAPIKeys,
@@ -60,7 +61,7 @@ func listMessages(opts *Options, cursor *string) (nextId *string, success bool) 
 }
 
 // CommandListMessages Print out the log messages that match the search criteria.
-func CommandListMessages(opts *Options, s *spinner.Spinner) bool {
+func CommandListMessages(opts *options.Options, s *spinner.Spinner) bool {
 	var nextId *string
 	nextId = nil
 	result := false

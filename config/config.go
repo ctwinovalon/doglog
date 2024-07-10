@@ -12,9 +12,10 @@ import (
 
 const NoFormatDefined = "No Formats Defined>>"
 
-const formatsSection string = "formats" // [formats]
-const serverSection string = "server"   // [server]
-const fieldSection string = "fields"    // [fields]
+const formatsSection string = "formats.short"    // [formats]
+const longFormatsSection string = "formats.long" // [formats.long]
+const serverSection string = "server"            // [server]
+const fieldSection string = "fields"             // [fields]
 
 var storedFormats []FormatDefinition = nil // Stores formats so we don't keep re-reading them
 var storedFields map[string][]string = nil // Stores field mappings so we don't keep re-reading them
@@ -58,12 +59,16 @@ func (c *IniFile) ApplicationKey() string {
 
 // Formats gets the log messages formats from the config file. Adds a final default format case so the user knows that
 // no formats were applied successfully.
-func (c *IniFile) Formats() (formats []FormatDefinition) {
+func (c *IniFile) Formats(long bool) (formats []FormatDefinition) {
 	if storedFormats == nil {
-		for _, f := range c.ini.Section(formatsSection).Keys() {
+		sectionName := formatsSection
+		if long {
+			sectionName = longFormatsSection
+		}
+		for _, f := range c.ini.Section(sectionName).Keys() {
 			formats = append(formats, FormatDefinition{Name: f.Name(), Format: f.Value()})
 		}
-		formats = append(formats, FormatDefinition{Name: "_default", Format: NoFormatDefined + " {{._json}}"})
+		formats = append(formats, FormatDefinition{Name: "_default", Format: NoFormatDefined + " {{." + consts.ComputedJsonField + "}}"})
 		storedFormats = formats
 	}
 

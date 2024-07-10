@@ -3,6 +3,7 @@ package cli
 import (
 	"doglog/config"
 	"doglog/log"
+	"doglog/options"
 	"fmt"
 	"github.com/DataDog/datadog-api-client-go/v2/api/datadog"
 	"github.com/akamensky/argparse"
@@ -23,26 +24,9 @@ const DefaultConfigPath = "~/.doglog"
 
 var defaultIndices = []string{"main"}
 
-// Options structure stores the command-line Options and values.
-type Options struct {
-	Service      string
-	Query        string
-	Limit        int
-	Tail         bool
-	ConfigPath   string
-	TimeRange    int
-	StartDate    string
-	EndDate      string
-	Json         bool
-	ServerConfig *config.IniFile
-	Color        bool
-	Debug        bool
-	Indexes      []string
-}
-
 // ParseArgs parses the command-line arguments.
 // returns: *options which contains both the parsed command-line arguments.
-func ParseArgs() *Options {
+func ParseArgs() *options.Options {
 	parser := argparse.NewParser("datadog", "Search and tail logs from Datadog.")
 
 	var defaultConfigPath = expandPath(DefaultConfigPath)
@@ -60,6 +44,7 @@ func ParseArgs() *Options {
 	noColor := parser.Flag("", "no-colors", &argparse.Options{Required: false, Help: "Don't use colors in output."})
 	debug := parser.Flag("d", "debug", &argparse.Options{Required: false, Help: "Generate debug output."})
 	indexes := parser.StringList("i", "indices", &argparse.Options{Required: false, Help: "The list of indices to search in Datadog. Repeat the parameter to add indices to the list", Default: defaultIndices})
+	long := parser.Flag("", "long", &argparse.Options{Required: false, Help: "Generate long output.", Default: false})
 
 	if err := parser.Parse(os.Args); err != nil {
 		invalidArgs(parser, err, "")
@@ -83,7 +68,7 @@ func ParseArgs() *Options {
 		start = datadog.PtrString("")
 	}
 
-	opts := Options{
+	opts := options.Options{
 		Service:    *service,
 		Query:      *query,
 		Limit:      *limit,
@@ -95,6 +80,7 @@ func ParseArgs() *Options {
 		Color:      !*noColor && isTty(),
 		Debug:      *debug,
 		Indexes:    *indexes,
+		Long:       *long,
 	}
 
 	// Read the configuration file

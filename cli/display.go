@@ -5,6 +5,7 @@ import (
 	"doglog/config"
 	"doglog/consts"
 	"doglog/log"
+	"doglog/options"
 	"encoding/json"
 	"fmt"
 	"github.com/DataDog/datadog-api-client-go/v2/api/datadogV2"
@@ -55,7 +56,7 @@ func formatJson(msg datadogV2.Log) string {
 }
 
 // Print a single log message to stdout.
-func printMessage(opts *Options, msg *datadogV2.Log) {
+func printMessage(opts *options.Options, msg *datadogV2.Log) {
 	adjustMap(opts, msg)
 
 	var text string
@@ -64,7 +65,7 @@ func printMessage(opts *Options, msg *datadogV2.Log) {
 	if opts.Json && jsonField != nil {
 		text = jsonField.(string)
 	} else {
-		for _, f := range opts.ServerConfig.Formats() {
+		for _, f := range opts.ServerConfig.Formats(opts.Long) {
 			text = tryFormat(opts, *msg, f.Name, f.Format)
 			if len(text) > 0 {
 				break
@@ -74,9 +75,12 @@ func printMessage(opts *Options, msg *datadogV2.Log) {
 
 	if len(text) > 0 {
 		if strings.HasPrefix(text, config.NoFormatDefined) {
-			fmt.Println("stop")
+			fmt.Println("")
 		}
 		fmt.Println(text)
+		if strings.HasPrefix(text, config.NoFormatDefined) {
+			fmt.Println("")
+		}
 	} else if jsonField != nil {
 		// Last case fallback in case none of the formats (including the default) match
 		text = jsonField.(string)
@@ -86,17 +90,16 @@ func printMessage(opts *Options, msg *datadogV2.Log) {
 
 // Try to apply a format template.
 // returns: empty string if the format failed.
-func tryFormat(opts *Options, msg datadogV2.Log, tmplName string, tmpl string) string {
+func tryFormat(opts *options.Options, msg datadogV2.Log, tmplName string, tmpl string) string {
 	var t = template.Must(template.New(tmplName).Funcs(sprig.TxtFuncMap()).Option("missingkey=error").Parse(tmpl))
 	var result bytes.Buffer
 
 	err := t.Execute(&result, msg.AdditionalProperties)
 	if err == nil {
+		log.Info(*opts, "Applied template '%s' successfully", tmplName)
 		return result.String()
 	}
-	if opts.Debug {
-		log.Error(*opts, "failed to apply template '%s': %v", tmplName, err)
-	}
+	log.Debug(*opts, "failed to apply template '%s': %v", tmplName, err)
 
 	return ""
 }
@@ -117,7 +120,7 @@ func flatten(src map[string]interface{}, dest map[string]interface{}) {
 }
 
 // "Cleanup" the log message and add helper fields.
-func adjustMap(opts *Options, msg *datadogV2.Log) {
+func adjustMap(opts *options.Options, msg *datadogV2.Log) {
 	isTty := opts.Color
 	if msg.AdditionalProperties == nil {
 		msg.AdditionalProperties = make(map[string]interface{})
@@ -160,6 +163,8 @@ func adjustMap(opts *Options, msg *datadogV2.Log) {
 	(*additionalProperties)[consts.ComputedLevelField] = level
 
 	constructMessageText(*msg)
+
+	msg.AdditionalProperties[consts.ComputedJsonField] = formatJson(*msg)
 
 	setupColors(isTty, level, *msg)
 }
@@ -213,10 +218,6 @@ func setupColors(isTty bool, level string, msg datadogV2.Log) {
 // append multi-line text (stacktraces) onto the message text, etc.
 func constructMessageText(msg datadogV2.Log) {
 	messageText := getField(msg.AdditionalProperties, consts.ComputedMessageField)
-	msg.AdditionalProperties[consts.ComputedJsonField] = formatJson(msg)
-	if len(messageText) == 0 {
-		messageText = msg.AdditionalProperties[consts.ComputedJsonField].(string)
-	}
 	// Replace \" with plain "
 	messageText = strings.ReplaceAll(messageText, "\\\"", "\"")
 	msg.AdditionalProperties[consts.ComputedMessageField] = messageText
