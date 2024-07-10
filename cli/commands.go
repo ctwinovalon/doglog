@@ -26,12 +26,10 @@ func listMessages(opts *Options, cursor *string) (nextId *string, success bool) 
 
 	body := datadogV2.LogsListRequest{
 		Filter: &datadogV2.LogsQueryFilter{
-			Query: &opts.query,
-			From:  datadog.PtrString("now-15m"),
-			Indexes: []string{
-				"main",
-			},
-			To: datadog.PtrString("now"),
+			Query:   &opts.query,
+			From:    &opts.startDate,
+			To:      &opts.endDate,
+			Indexes: opts.indexes,
 		},
 		Options: &datadogV2.LogsQueryOptions{
 			Timezone: datadog.PtrString("GMT"),

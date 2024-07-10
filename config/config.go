@@ -40,6 +40,10 @@ func New(configPath string) (*IniFile, error) {
 	}
 }
 
+func (c *IniFile) AllFields() map[string][]string {
+	return storedFields
+}
+
 // ApiKey gets the API key from the config file. Defaults to an empty string.
 func (c *IniFile) ApiKey() string {
 	server := c.ini.Section(serverSection)
