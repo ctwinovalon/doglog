@@ -11,7 +11,7 @@ import (
 
 // Print out a page of log messages that match the search criteria.
 func listMessages(ctx context.Context, logsApi *datadogV2.LogsApi,
-	opts *options.Options, cursor *string) (nextId *string, success bool) {
+	opts *options.Options, cursor *string) (*string, bool) {
 	body := datadogV2.LogsListRequest{
 		Filter: &datadogV2.LogsQueryFilter{
 			Query:   &opts.Query,
@@ -47,14 +47,13 @@ func listMessages(ctx context.Context, logsApi *datadogV2.LogsApi,
 func apiClient(opts *options.Options) *datadog.APIClient {
 	configuration := datadog.NewConfiguration()
 	configuration.Debug = opts.Debug
-	apiClient := datadog.NewAPIClient(configuration)
-	return apiClient
+	return datadog.NewAPIClient(configuration)
 }
 
 // Build the datadog context required for all api calls.
 // The context includes the api keys.
 func constructDatadogContext(opts *options.Options) context.Context {
-	ctx := context.WithValue(
+	return context.WithValue(
 		context.Background(),
 		datadog.ContextAPIKeys,
 		map[string]datadog.APIKey{
@@ -66,7 +65,6 @@ func constructDatadogContext(opts *options.Options) context.Context {
 			},
 		},
 	)
-	return ctx
 }
 
 // CommandListMessages Print out the log messages that match the search criteria.

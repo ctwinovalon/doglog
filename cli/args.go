@@ -161,10 +161,10 @@ func invalidArgs(parser *argparse.Parser, err error, msg string) {
 }
 
 // Generate the help usage text
-func customHelp(c *argparse.Command, _ interface{}) string {
-	buffer := fmt.Sprintf("Version: %s\n", AppVersion)
+func customHelp(c *argparse.Command, _ interface{}) (buffer string) {
+	buffer = fmt.Sprintf("Version: %s\n", AppVersion)
 	buffer += c.Usage(nil)
-	return buffer
+	return
 }
 
 // Check to see whether we're outputting to a terminal or if we've been redirected to a file

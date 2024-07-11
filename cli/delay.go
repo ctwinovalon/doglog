@@ -23,12 +23,10 @@ const delayIncreaseFactor = 2.0
 // Adjust the delay between calls to Datadog, so we don't hammer it when no messages have
 // arrived for a while.
 func adjustDelay(delay float64, found bool) float64 {
-	if !found {
-		if delay < maxDelay {
-			delay *= delayIncreaseFactor
-			if delay > maxDelay {
-				delay = maxDelay
-			}
+	if !found && delay < maxDelay {
+		delay *= delayIncreaseFactor
+		if delay > maxDelay {
+			delay = maxDelay
 		}
 	} else {
 		delay = MinDelay

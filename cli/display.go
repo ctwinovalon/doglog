@@ -17,9 +17,7 @@ import (
 )
 
 // Format a log message into JSON.
-func formatJson(msg datadogV2.Log) string {
-	var text string
-
+func formatJson(msg datadogV2.Log) (text string) {
 	buf, _ := json.Marshal(msg.AdditionalProperties)
 	text = strings.TrimRight(string(buf), "}")
 	buf, _ = json.Marshal(msg.GetAttributes().Tags)
@@ -29,7 +27,7 @@ func formatJson(msg datadogV2.Log) string {
 
 	text = strings.ReplaceAll(text, "\\\"", "\"")
 
-	return text
+	return
 }
 
 // Print a single log message to stdout.
@@ -65,8 +63,7 @@ func printMessage(opts *options.Options, msg *datadogV2.Log) {
 	}
 }
 
-// Try to apply a format template.
-// returns: empty string if the format failed.
+// Try to apply a format template and return an empty string if the format failed.
 func tryFormat(opts *options.Options, msg datadogV2.Log, tmplName string, tmpl string) string {
 	var t = template.Must(template.New(tmplName).Funcs(sprig.TxtFuncMap()).Option("missingkey=error").Parse(tmpl))
 	var result bytes.Buffer
@@ -81,6 +78,7 @@ func tryFormat(opts *options.Options, msg datadogV2.Log, tmplName string, tmpl s
 	return ""
 }
 
+// Collapse a tree of maps into a single top-level map.
 func flatten(src map[string]interface{}, dest map[string]interface{}) {
 	for k, v := range src {
 		switch child := v.(type) {
@@ -96,7 +94,7 @@ func flatten(src map[string]interface{}, dest map[string]interface{}) {
 	}
 }
 
-// "Cleanup" the log message and add helper fields.
+// Normalize the log message and add helper fields.
 func adjustMap(opts *options.Options, msg *datadogV2.Log) {
 	isTty := opts.Color
 	if msg.AdditionalProperties == nil {
@@ -124,8 +122,7 @@ func adjustMap(opts *options.Options, msg *datadogV2.Log) {
 
 	opts.ServerConfig.AggregateFields(*msg)
 
-	rpf := (*additionalProperties)[consts.RequestPageField]
-	if rpf != nil {
+	if rpf := (*additionalProperties)[consts.RequestPageField]; rpf != nil {
 		requestPage := rpf.(string)
 		if len(requestPage) > 1 && !strings.HasPrefix(requestPage, "/") {
 			rpf = "/" + requestPage
@@ -146,9 +143,9 @@ func adjustMap(opts *options.Options, msg *datadogV2.Log) {
 	setupColors(isTty, level, *msg)
 }
 
+// Extract a named entry from a map, returning an empty string if not found.
 func getField(props map[string]interface{}, field string) string {
-	value, ok := props[field]
-	if ok {
+	if value, ok := props[field]; ok {
 		switch v := value.(type) {
 		case string:
 			return v
@@ -201,10 +198,8 @@ func constructMessageText(msg datadogV2.Log) {
 }
 
 // Normalize the "level" of the message.
-func normalizeLevel(msg datadogV2.Log) string {
-	status := msg.GetAttributes().Status
-	level := ""
-	if status == nil {
+func normalizeLevel(msg datadogV2.Log) (level string) {
+	if status := msg.GetAttributes().Status; status == nil {
 		level = getField(msg.AdditionalProperties, consts.ComputedLevelField)
 	} else {
 		level = *status
@@ -224,7 +219,7 @@ func normalizeLevel(msg datadogV2.Log) string {
 		level = consts.TraceLevel
 	}
 	msg.AdditionalProperties[consts.ComputedLevelField] = level
-	return level
+	return
 }
 
 // Compute the color that should be used to display the log level in the message output.
