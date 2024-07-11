@@ -46,7 +46,7 @@ func main() {
 	version := fmt.Sprintf("%v (%v)", appVersion, gitHash)
 	opts := cli.ParseArgs(version)
 
-	if opts.Tail {
+	if opts.DoTail {
 		var delay = cli.MinDelay
 
 		s := setupSpinner()

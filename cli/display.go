@@ -37,10 +37,10 @@ func printMessage(opts *options.Options, msg *datadogV2.Log) {
 	var text string
 
 	jsonField := msg.AdditionalProperties[consts.ComputedJsonField]
-	if opts.Json && jsonField != nil {
+	if opts.OutputJson && jsonField != nil {
 		text = jsonField.(string)
 	} else {
-		for _, f := range opts.ServerConfig.Formats(opts.Long) {
+		for _, f := range opts.ServerConfig.Formats(opts.UseLong) {
 			text = tryFormat(opts, *msg, f.Name, f.Format)
 			if len(text) > 0 {
 				break
@@ -96,7 +96,7 @@ func flatten(src map[string]interface{}, dest map[string]interface{}) {
 
 // Normalize the log message and add helper fields.
 func adjustMap(opts *options.Options, msg *datadogV2.Log) {
-	isTty := opts.Color
+	useColor := opts.UseColor
 	if msg.AdditionalProperties == nil {
 		msg.AdditionalProperties = make(map[string]interface{})
 	}
@@ -140,7 +140,7 @@ func adjustMap(opts *options.Options, msg *datadogV2.Log) {
 
 	msg.AdditionalProperties[consts.ComputedJsonField] = formatJson(*msg)
 
-	setupColors(isTty, level, *msg)
+	setupColors(useColor, level, *msg)
 }
 
 // Extract a named entry from a map, returning an empty string if not found.
@@ -160,8 +160,8 @@ func getField(props map[string]interface{}, field string) string {
 }
 
 // Set up the colors in the message structure.
-func setupColors(isTty bool, level string, msg datadogV2.Log) {
-	if isTty {
+func setupColors(useColor bool, level string, msg datadogV2.Log) {
+	if useColor {
 		computeLevelColor(level, msg)
 		// Add color escapes
 		msg.AdditionalProperties[consts.BlueField] = consts.BlueEsc

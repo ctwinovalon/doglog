@@ -46,7 +46,7 @@ func listMessages(ctx context.Context, logsApi *datadogV2.LogsApi,
 // Construct a datadog api client.
 func apiClient(opts *options.Options) *datadog.APIClient {
 	configuration := datadog.NewConfiguration()
-	configuration.Debug = opts.Debug
+	configuration.Debug = opts.PrintDebug
 	return datadog.NewAPIClient(configuration)
 }
 

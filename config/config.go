@@ -16,6 +16,8 @@ const formatsSection string = "formats.short"    // [formats]
 const longFormatsSection string = "formats.long" // [formats.long]
 const serverSection string = "server"            // [server]
 const fieldSection string = "fields"             // [fields]
+const apiKey = "api-key"
+const applicationKey = "application-key"
 
 // FormatDefinition stores a single format line.
 type FormatDefinition struct {
@@ -48,22 +50,22 @@ func (c *IniFile) AllFields() map[string][]string {
 // ApiKey gets the API key from the config file. Defaults to an empty string.
 func (c *IniFile) ApiKey() string {
 	server := c.ini.Section(serverSection)
-	return server.Key("api-key").MustString("")
+	return server.Key(apiKey).MustString("")
 }
 
 // ApplicationKey gets the application key from the config file. Defaults to an empty string.
 func (c *IniFile) ApplicationKey() string {
 	server := c.ini.Section(serverSection)
-	return server.Key("application-key").MustString("")
+	return server.Key(applicationKey).MustString("")
 }
 
 // Formats gets the log messages formats from the config file. Adds a final default format case so the user knows that
 // no formats were applied successfully.
-func (c *IniFile) Formats(long bool) []FormatDefinition {
+func (c *IniFile) Formats(useLong bool) []FormatDefinition {
 	var formats []FormatDefinition
 	if c.storedFormats == nil {
 		sectionName := formatsSection
-		if long {
+		if useLong {
 			sectionName = longFormatsSection
 		}
 		for _, f := range c.ini.Section(sectionName).Keys() {
@@ -80,11 +82,17 @@ func (c *IniFile) Formats(long bool) []FormatDefinition {
 func (c *IniFile) Fields() map[string][]string {
 	if c.storedFields == nil {
 		c.storedFields = make(map[string][]string)
-		c.storedFields[consts.ComputedLevelField] = []string{consts.DatadogStatus, "level", "status", "loglevel", "log_status", "LogLevel", "severity"}
-		c.storedFields[consts.ComputedMessageField] = []string{consts.DatadogMessage, "message", "msg", "textPayload", "Message"}
-		c.storedFields[consts.ComputedClassNameField] = []string{"classname", "logger_name", "LoggerName", "component", "name"}
-		c.storedFields[consts.ComputedThreadNameField] = []string{"threadname", "thread_name"}
-		c.storedFields[consts.ComputedTimestampField] = []string{consts.DatadogTimestamp, "timestamp"}
+		c.storedFields[consts.ComputedLevelField] =
+			[]string{consts.DatadogStatus, "level", "status", "loglevel", "log_status", "LogLevel", "severity"}
+		c.storedFields[consts.ComputedMessageField] =
+			[]string{consts.DatadogMessage, "message", "msg", "textPayload", "Message"}
+		c.storedFields[consts.ComputedClassNameField] =
+			[]string{"classname", "logger_name", "LoggerName", "component", "name"}
+		c.storedFields[consts.ComputedThreadNameField] =
+			[]string{"threadname", "thread_name"}
+		c.storedFields[consts.ComputedTimestampField] =
+			[]string{consts.DatadogTimestamp, "timestamp"}
+
 		for _, f := range c.ini.Section(fieldSection).Keys() {
 			name := f.Name()
 			value := f.Value()

@@ -7,16 +7,16 @@ type Options struct {
 	Service      string
 	Query        string
 	Limit        int
-	Tail         bool
+	DoTail       bool
 	ConfigPath   string
 	TimeRange    int
 	StartDate    string
 	EndDate      string
-	Json         bool
+	OutputJson   bool
 	ServerConfig *config.IniFile
-	Color        bool
-	Debug        bool
+	UseColor     bool
+	PrintDebug   bool
 	Indexes      []string
-	Long         bool
+	UseLong      bool
 	Version      bool
 }
