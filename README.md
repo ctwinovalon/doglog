@@ -56,8 +56,10 @@ Arguments:
       --long       Generate long output. Default: false
       --no-colors  Don't use colors in output. Automatically turned off when
                    redirecting output.
-  -q  --query      Query terms to search on (Datadog search syntax). Defaults
-                   to '*'.
+  -q  --query      Query terms to search on (Datadog search syntax). Bare text
+                   will search only the message field. You can specify
+                   attributes use an '@' sign, e.g., '@level:INFO'. Keep in
+                   mind that `doglog` cleans up levels. Default: *
   -s  --service    The Datadog log 'service' to constrain the log search, e.g.,
                    '-s send-email'.
       --start      Starting date/time to search from. The start and end
@@ -75,6 +77,9 @@ Arguments:
   -t  --tail       Whether to tail the output. Requires a relative search.
   -v  --version    Display the application version and exit.
 ```
+
+You can review the [Datadog query/search syntax](https://docs.datadoghq.com/logs/explorer/search_syntax/)
+for details.
 
 Examples:
 ```
