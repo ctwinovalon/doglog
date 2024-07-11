@@ -56,13 +56,19 @@ Arguments:
       --long       Generate long output. Default: false
       --no-colors  Don't use colors in output. Automatically turned off when
                    redirecting output.
-  -q  --query      Query terms to search on (Datadog search syntax). Defaults to
-                   '*'.
+  -q  --query      Query terms to search on (Datadog search syntax). Defaults
+                   to '*'.
   -s  --service    The Datadog log 'service' to constrain the log search, e.g.,
                    '-s send-email'.
-      --start      Starting date/time to search from. Uses Datadog format. A 
-                   date/time MUST be in the full format of '2024-07-11T08:45:00+00:00'.
-                   Default: now-15m
+      --start      Starting date/time to search from. The start and end
+                   parameters can be: 1) an ISO-8601 string using the FULL
+                   format of '2024-07-11T08:45:00+00:00', 2) a unix timestamp
+                   (number representing the elapsed milliseconds since epoch),
+                   3) a date math string such as +1h to add one hour, -2d to
+                   subtract two days, etc. The full list includes s for
+                   seconds, m for minutes, h for hours, and d for days.
+                   Optionally, use now to indicate current time. Default:
+                   now-15m
       --end        Ending date/time to search from. Uses Datadog format.
                    Defaults to 'now' if --start is provided but no --end.
                    Default: now

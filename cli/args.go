@@ -57,7 +57,7 @@ func initializeArgumentParser() options.Options {
 	noColor := parser.Flag("", "no-colors", &argparse.Options{Required: false, Help: "Don't use colors in output. Automatically turned off when redirecting output."})
 	query := parser.String("q", "query", &argparse.Options{Required: false, Help: "Query terms to search on (Datadog search syntax). Defaults to '*'."})
 	service := parser.String("s", "service", &argparse.Options{Required: true, Help: "The Datadog log 'service' to constrain the log search, e.g., '-s send-email'."})
-	start := parser.String("", "start", &argparse.Options{Required: false, Help: "Starting date/time to search from. Uses Datadog format. A date/time MUST be in the full format of '2024-07-11T08:45:00+00:00'", Default: DefaultRange})
+	start := parser.String("", "start", &argparse.Options{Required: false, Help: "Starting date/time to search from. The start and end parameters can be: 1) an ISO-8601 string using the FULL format of '2024-07-11T08:45:00+00:00', 2) a unix timestamp (number representing the elapsed milliseconds since epoch), 3) a date math string such as +1h to add one hour, -2d to subtract two days, etc. The full list includes s for seconds, m for minutes, h for hours, and d for days. Optionally, use now to indicate current time", Default: DefaultRange})
 	end := parser.String("", "end", &argparse.Options{Required: false, Help: "Ending date/time to search from. Uses Datadog format. Defaults to 'now' if --start is provided but no --end", Default: "now"})
 	tail := parser.Flag("t", "tail", &argparse.Options{Required: false, Help: "Whether to tail the output. Requires a relative search."})
 	version := parser.Flag("v", "version", &argparse.Options{Required: false, Help: "Display the application version and exit."})
@@ -105,7 +105,7 @@ func constructQuery(service string, query string) string {
 	if len(service) > 0 {
 		newQuery = "service:" + service
 		if len(query) > 0 {
-			newQuery += " AND " + query
+			newQuery += " " + query
 		}
 		query = newQuery
 	}
