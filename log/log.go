@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+// Debug Output a log message at debug level. This is only used when outputting
+// debug/verbose output.
 func Debug(opts options.Options, msg string, a ...any) {
 	if opts.Debug {
 		value := fmt.Sprintf(msg, a)
@@ -12,6 +14,8 @@ func Debug(opts options.Options, msg string, a ...any) {
 	}
 }
 
+// Info Output a log message at info level. This is only used when outputting
+// debug/verbose output.
 func Info(opts options.Options, msg string, a ...any) {
 	if opts.Debug {
 		value := fmt.Sprintf(msg, a)
@@ -19,6 +23,8 @@ func Info(opts options.Options, msg string, a ...any) {
 	}
 }
 
+// Error Output a log message at error level. This is only used when outputting
+// debug/verbose output.
 func Error(opts options.Options, msg string, a ...any) {
 	if opts.Debug {
 		value := fmt.Sprintf(msg, a)

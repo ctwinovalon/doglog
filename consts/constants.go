@@ -35,4 +35,27 @@ const (
 	CyanField       = "_Cyan"
 	MagentaField    = "_Magenta"
 	ResetField      = "_Reset"
+
+	GreyEsc    = "\033[37m"
+	RedEsc     = "\033[91m"
+	GreenEsc   = "\033[92m"
+	YellowEsc  = "\033[93m"
+	BlueEsc    = "\033[94m"
+	MagentaEsc = "\033[95m"
+	CyanEsc    = "\033[96m"
+	WhiteEsc   = "\033[97m"
+
+	ResetEsc = "\033[39;49m"
+
+	DebugEsc = BlueEsc
+	ErrorEsc = RedEsc
+	InfoEsc  = GreenEsc
+	WarnEsc  = YellowEsc
+
+	DebugLevel = "DEBUG"
+	ErrorLevel = "ERROR"
+	FatalLevel = "FATAL"
+	InfoLevel  = "INFO"
+	TraceLevel = "TRACE"
+	WarnLevel  = "WARN"
 )

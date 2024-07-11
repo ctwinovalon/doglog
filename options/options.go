@@ -2,7 +2,7 @@ package options
 
 import "doglog/config"
 
-// Options structure stores the command-line Options and values.
+// Options Structure stores the command-line options and values.
 type Options struct {
 	Service      string
 	Query        string
@@ -18,4 +18,5 @@ type Options struct {
 	Debug        bool
 	Indexes      []string
 	Long         bool
+	Version      bool
 }

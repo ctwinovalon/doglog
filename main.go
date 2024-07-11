@@ -2,12 +2,21 @@ package main
 
 import (
 	"doglog/cli"
+	"fmt"
 	"github.com/briandowns/spinner"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 )
+
+// The appVersion is filled in during the build
+//
+//goland:noinspection GoUnusedGlobalVariable
+var appVersion = "v0.0.0"
+
+// The gitHash is filled in during the build
+var gitHash = ""
 
 // Create a new terminal spinner.
 func setupSpinner() *spinner.Spinner {
@@ -34,11 +43,10 @@ func makeSignalsChannel() chan os.Signal {
 }
 
 func main() {
-	opts := cli.ParseArgs()
+	version := fmt.Sprintf("%v (%v)", appVersion, gitHash)
+	opts := cli.ParseArgs(version)
 
-	if !opts.Tail {
-		_ = cli.CommandListMessages(opts, nil)
-	} else {
+	if opts.Tail {
 		var delay = cli.MinDelay
 
 		s := setupSpinner()
@@ -57,10 +65,9 @@ func main() {
 		//noinspection GoInfiniteFor
 		for {
 			found := cli.CommandListMessages(opts, s)
-
-			cli.DelayForSeconds(delay)
-
-			delay = cli.AdjustDelay(delay, found)
+			delay = cli.DelayForSeconds(delay, found)
 		}
+	} else {
+		_ = cli.CommandListMessages(opts, nil)
 	}
 }

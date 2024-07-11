@@ -25,4 +25,5 @@ doglog
 
 .idea/
 go.sum
+dist/
 

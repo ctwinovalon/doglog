@@ -16,29 +16,6 @@ import (
 	"time"
 )
 
-const greyEsc = "\033[37m"
-const redEsc = "\033[91m"
-const greenEsc = "\033[92m"
-const yellowEsc = "\033[93m"
-const blueEsc = "\033[94m"
-const magentaEsc = "\033[95m"
-const cyanEsc = "\033[96m"
-const whiteEsc = "\033[97m"
-
-const resetEsc = "\033[39;49m"
-
-const debugEsc = blueEsc
-const errorEsc = redEsc
-const infoEsc = greenEsc
-const warnEsc = yellowEsc
-
-const debugLevel = "DEBUG"
-const errorLevel = "ERROR"
-const fatalLevel = "FATAL"
-const infoLevel = "INFO"
-const traceLevel = "TRACE"
-const warnLevel = "WARN"
-
 // Format a log message into JSON.
 func formatJson(msg datadogV2.Log) string {
 	var text string
@@ -190,15 +167,15 @@ func setupColors(isTty bool, level string, msg datadogV2.Log) {
 	if isTty {
 		computeLevelColor(level, msg)
 		// Add color escapes
-		msg.AdditionalProperties[consts.BlueField] = blueEsc
-		msg.AdditionalProperties[consts.RedField] = redEsc
-		msg.AdditionalProperties[consts.GreenField] = greenEsc
-		msg.AdditionalProperties[consts.YellowField] = yellowEsc
-		msg.AdditionalProperties[consts.GreyField] = greyEsc
-		msg.AdditionalProperties[consts.WhiteField] = whiteEsc
-		msg.AdditionalProperties[consts.CyanField] = cyanEsc
-		msg.AdditionalProperties[consts.MagentaField] = magentaEsc
-		msg.AdditionalProperties[consts.ResetField] = resetEsc
+		msg.AdditionalProperties[consts.BlueField] = consts.BlueEsc
+		msg.AdditionalProperties[consts.RedField] = consts.RedEsc
+		msg.AdditionalProperties[consts.GreenField] = consts.GreenEsc
+		msg.AdditionalProperties[consts.YellowField] = consts.YellowEsc
+		msg.AdditionalProperties[consts.GreyField] = consts.GreyEsc
+		msg.AdditionalProperties[consts.WhiteField] = consts.WhiteEsc
+		msg.AdditionalProperties[consts.CyanField] = consts.CyanEsc
+		msg.AdditionalProperties[consts.MagentaField] = consts.MagentaEsc
+		msg.AdditionalProperties[consts.ResetField] = consts.ResetEsc
 	} else {
 		// Add color escapes
 		msg.AdditionalProperties[consts.BlueField] = ""
@@ -234,17 +211,17 @@ func normalizeLevel(msg datadogV2.Log) string {
 	}
 	level = strings.ToUpper(level)
 	if strings.HasPrefix(level, "E") {
-		level = errorLevel
+		level = consts.ErrorLevel
 	} else if strings.HasPrefix(level, "F") {
-		level = fatalLevel
+		level = consts.FatalLevel
 	} else if strings.HasPrefix(level, "I") {
-		level = infoLevel
+		level = consts.InfoLevel
 	} else if strings.HasPrefix(level, "W") {
-		level = warnLevel
+		level = consts.WarnLevel
 	} else if strings.HasPrefix(level, "D") {
-		level = debugLevel
+		level = consts.DebugLevel
 	} else if strings.HasPrefix(level, "T") {
-		level = traceLevel
+		level = consts.TraceLevel
 	}
 	msg.AdditionalProperties[consts.ComputedLevelField] = level
 	return level
@@ -254,14 +231,14 @@ func normalizeLevel(msg datadogV2.Log) string {
 func computeLevelColor(level string, msg datadogV2.Log) {
 	var levelColor string
 	switch level {
-	case debugLevel, traceLevel:
-		levelColor = debugEsc
-	case infoLevel:
-		levelColor = infoEsc
-	case warnLevel:
-		levelColor = warnEsc
-	case errorLevel, fatalLevel:
-		levelColor = errorEsc
+	case consts.DebugLevel, consts.TraceLevel:
+		levelColor = consts.DebugEsc
+	case consts.InfoLevel:
+		levelColor = consts.InfoEsc
+	case consts.WarnLevel:
+		levelColor = consts.WarnEsc
+	case consts.ErrorLevel, consts.FatalLevel:
+		levelColor = consts.ErrorEsc
 	}
 	if len(levelColor) > 0 {
 		msg.AdditionalProperties[consts.LevelColorField] = levelColor

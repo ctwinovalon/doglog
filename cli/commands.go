@@ -9,21 +9,9 @@ import (
 	"github.com/briandowns/spinner"
 )
 
-// CommandListMessages Print out the log messages that match the search criteria.
-func listMessages(opts *options.Options, cursor *string) (nextId *string, success bool) {
-	ctx := context.WithValue(
-		context.Background(),
-		datadog.ContextAPIKeys,
-		map[string]datadog.APIKey{
-			"apiKeyAuth": {
-				Key: opts.ServerConfig.ApiKey(),
-			},
-			"appKeyAuth": {
-				Key: opts.ServerConfig.ApplicationKey(),
-			},
-		},
-	)
-
+// Print out a page of log messages that match the search criteria.
+func listMessages(ctx context.Context, logsApi *datadogV2.LogsApi,
+	opts *options.Options, cursor *string) (nextId *string, success bool) {
 	body := datadogV2.LogsListRequest{
 		Filter: &datadogV2.LogsQueryFilter{
 			Query:   &opts.Query,
@@ -41,12 +29,7 @@ func listMessages(opts *options.Options, cursor *string) (nextId *string, succes
 		Sort: datadogV2.LOGSSORT_TIMESTAMP_ASCENDING.Ptr(),
 	}
 
-	configuration := datadog.NewConfiguration()
-	configuration.Debug = opts.Debug
-	apiClient := datadog.NewAPIClient(configuration)
-	api := datadogV2.NewLogsApi(apiClient)
-
-	items, _ := api.ListLogsWithPagination(ctx, *datadogV2.NewListLogsOptionalParameters().WithBody(body))
+	items, _ := logsApi.ListLogsWithPagination(ctx, *datadogV2.NewListLogsOptionalParameters().WithBody(body))
 
 	for paginationResult := range items {
 		if paginationResult.Error != nil {
@@ -60,8 +43,38 @@ func listMessages(opts *options.Options, cursor *string) (nextId *string, succes
 	return body.Page.Cursor, true
 }
 
+// Construct a datadog api client.
+func apiClient(opts *options.Options) *datadog.APIClient {
+	configuration := datadog.NewConfiguration()
+	configuration.Debug = opts.Debug
+	apiClient := datadog.NewAPIClient(configuration)
+	return apiClient
+}
+
+// Build the datadog context required for all api calls.
+// The context includes the api keys.
+func constructDatadogContext(opts *options.Options) context.Context {
+	ctx := context.WithValue(
+		context.Background(),
+		datadog.ContextAPIKeys,
+		map[string]datadog.APIKey{
+			"apiKeyAuth": {
+				Key: opts.ServerConfig.ApiKey(),
+			},
+			"appKeyAuth": {
+				Key: opts.ServerConfig.ApplicationKey(),
+			},
+		},
+	)
+	return ctx
+}
+
 // CommandListMessages Print out the log messages that match the search criteria.
+// Will continue until all pages of output are displayed.
 func CommandListMessages(opts *options.Options, s *spinner.Spinner) bool {
+	ctx := constructDatadogContext(opts)
+	logsApi := datadogV2.NewLogsApi(apiClient(opts))
+
 	var nextId *string
 	nextId = nil
 	result := false
@@ -69,14 +82,14 @@ func CommandListMessages(opts *options.Options, s *spinner.Spinner) bool {
 		if s != nil {
 			s.Stop()
 		}
-		nextId, result = listMessages(opts, nextId)
+		nextId, result = listMessages(ctx, logsApi, opts, nextId)
 		if s != nil {
 			s.Start()
 		}
 		if nextId == nil {
 			break
 		} else {
-			DelayForSeconds(0.2)
+			DelayForSeconds(0.2, true)
 		}
 	}
 	return result

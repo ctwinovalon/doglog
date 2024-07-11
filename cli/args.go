@@ -7,10 +7,9 @@ import (
 	"fmt"
 	"github.com/DataDog/datadog-api-client-go/v2/api/datadog"
 	"github.com/akamensky/argparse"
+	"golang.org/x/term"
 	"os"
-	"os/user"
 	"path/filepath"
-	"strings"
 )
 
 // DefaultLimit is the value used when no limit is provided by the user
@@ -19,17 +18,33 @@ const DefaultLimit = 300
 // DefaultRange is the value used when no range is provided by the user
 const DefaultRange = "now-15m"
 
-// DefaultConfigPath is the default location of the configuration path.
-const DefaultConfigPath = "~/.doglog"
+// DefaultConfigName is the default location of the configuration path.
+const DefaultConfigName = ".doglog"
 
 var defaultIndices = []string{"main"}
 
-// ParseArgs parses the command-line arguments.
-// returns: *options which contains both the parsed command-line arguments.
-func ParseArgs() *options.Options {
-	parser := argparse.NewParser("datadog", "Search and tail logs from Datadog.")
+var AppVersion = ""
 
-	var defaultConfigPath = expandPath(DefaultConfigPath)
+// ParseArgs parses the command-line arguments and returns the *options
+// which contain the parsed command-line arguments.
+func ParseArgs(appVersion string) *options.Options {
+	AppVersion = appVersion
+	opts := initializeArgumentParser()
+
+	// Display the application version. Put this here in case there's an error in
+	// the succeeding code
+	if opts.Version {
+		fmt.Println(AppVersion)
+		os.Exit(0)
+	}
+
+	return &opts
+}
+
+// Set up the argument parser and return the options selected
+func initializeArgumentParser() options.Options {
+	parser := argparse.NewParser("datadog", "Search and tail logs from Datadog.")
+	defaultConfigPath := defaultConfigFile()
 
 	parser.HelpFunc = customHelp
 
@@ -45,23 +60,10 @@ func ParseArgs() *options.Options {
 	debug := parser.Flag("d", "debug", &argparse.Options{Required: false, Help: "Generate debug output."})
 	indexes := parser.StringList("i", "indices", &argparse.Options{Required: false, Help: "The list of indices to search in Datadog. Repeat the parameter to add indices to the list", Default: defaultIndices})
 	long := parser.Flag("", "long", &argparse.Options{Required: false, Help: "Generate long output.", Default: false})
+	version := parser.Flag("v", "version", &argparse.Options{Required: false, Help: "Display the application version and exit."})
 
 	if err := parser.Parse(os.Args); err != nil {
 		invalidArgs(parser, err, "")
-	}
-
-	if *limit <= 0 {
-		var newLimit = DefaultLimit
-		limit = &newLimit
-	}
-
-	var newQuery string
-	if len(*service) > 0 {
-		newQuery = "service:" + *service
-		if len(*query) > 0 {
-			newQuery += " AND " + *query
-		}
-		query = &newQuery
 	}
 
 	if start == nil {
@@ -81,19 +83,66 @@ func ParseArgs() *options.Options {
 		Debug:      *debug,
 		Indexes:    *indexes,
 		Long:       *long,
+		Version:    *version,
 	}
 
+	if opts.Limit <= 0 {
+		var newLimit = DefaultLimit
+		opts.Limit = newLimit
+	}
+
+	opts.ServerConfig = loadConfigFile(opts, parser, &opts.ConfigPath)
+
+	opts.Query = constructQuery(opts.Service, opts.Query)
+	log.Debug(opts, "Computed query '%s'", opts.Query)
+
+	return opts
+}
+
+// Add 'service:' to the query
+func constructQuery(service string, query string) string {
+	var newQuery string
+	if len(service) > 0 {
+		newQuery = "service:" + service
+		if len(query) > 0 {
+			newQuery += " AND " + query
+		}
+		query = newQuery
+	}
+	return query
+}
+
+// Load the configuration
+func loadConfigFile(opts options.Options, parser *argparse.Parser, configPath *string) *config.IniFile {
+	testPath, err := filepath.Abs(*configPath)
+	if err != nil {
+		invalidArgs(parser, err, "Config file path is invalid")
+	}
+	if _, err := os.Stat(testPath); os.IsNotExist(err) {
+		invalidArgs(parser, err, "Config file does not exist")
+	}
 	// Read the configuration file
 	conf, err := config.New(opts.ConfigPath)
 	if err != nil {
 		invalidArgs(parser, err, "")
 	}
 
-	opts.ServerConfig = conf
+	return conf
+}
 
-	log.Debug(opts, "Computed query '%s'", opts.Query)
-
-	return &opts
+// Determine the default configuration file location
+func defaultConfigFile() string {
+	dirname, err := os.UserHomeDir()
+	if err != nil {
+		_, _ = fmt.Printf("Can't determine user's home directory - %s\n", err)
+		os.Exit(1)
+	}
+	defaultConfigPath, err := filepath.Abs(filepath.Join(dirname, DefaultConfigName))
+	if err != nil {
+		_, _ = fmt.Printf("Can't determine default config path - %s\n", err)
+		os.Exit(1)
+	}
+	return defaultConfigPath
 }
 
 // Display the help message when a command-line argument is invalid.
@@ -111,28 +160,14 @@ func invalidArgs(parser *argparse.Parser, err error, msg string) {
 	os.Exit(1)
 }
 
+// Generate the help usage text
 func customHelp(c *argparse.Command, _ interface{}) string {
-	buffer := c.Usage(nil)
+	buffer := fmt.Sprintf("Version: %s\n", AppVersion)
+	buffer += c.Usage(nil)
 	return buffer
-}
-
-// Expand a leading tilde (~) in a file path into the user's home directory.
-func expandPath(configPath string) string {
-	var path = configPath
-	if strings.HasPrefix(configPath, "~/") {
-		usr, _ := user.Current()
-		dir := usr.HomeDir
-
-		// Use strings.HasPrefix so we don't match paths like
-		// "/something/~/something/"
-		path = filepath.Join(dir, path[2:])
-	}
-	return path
 }
 
 // Check to see whether we're outputting to a terminal or if we've been redirected to a file
 func isTty() bool {
-	//_, err := unix.IoctlGetTermios(int(os.Stdout.Fd()), unix.TIOCGETA)
-	//return err == nil
-	return true
+	return term.IsTerminal(int(os.Stdout.Fd()))
 }
