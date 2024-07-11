@@ -48,18 +48,18 @@ func initializeArgumentParser() options.Options {
 
 	parser.HelpFunc = customHelp
 
-	service := parser.String("s", "service", &argparse.Options{Required: false, Help: "Special case to search the 'service' message field, e.g., -s send-email is equivalent to -q 'service:send-email'. Merged with the -q query using 'AND' if the -q query is present."})
-	query := parser.String("q", "query", &argparse.Options{Required: false, Help: "Query terms to search on (Doglog search syntax). Defaults to '*'."})
-	limit := parser.Int("l", "limit", &argparse.Options{Required: false, Help: "The maximum number of messages to request from Datadog. Must be greater then 0", Default: DefaultLimit})
-	tail := parser.Flag("t", "tail", &argparse.Options{Required: false, Help: "Whether to tail the output. Requires a relative search."})
 	configPath := parser.String("c", "config", &argparse.Options{Required: false, Help: "Path to the config file", Default: defaultConfigPath})
-	start := parser.String("", "start", &argparse.Options{Required: false, Help: "Starting date/time to search from. Uses Datadog format", Default: DefaultRange})
-	end := parser.String("", "end", &argparse.Options{Required: false, Help: "Ending date/time to search from. Uses Datadog format. Defaults to 'now' if --start is provided but no --end", Default: "now"})
-	json := parser.Flag("j", "json", &argparse.Options{Required: false, Help: "Output messages in json format. Shows the modified log message, not the untouched message from Datadog. Useful in understanding the fields available when creating Format templates or for further processing."})
-	noColor := parser.Flag("", "no-colors", &argparse.Options{Required: false, Help: "Don't use colors in output."})
 	debug := parser.Flag("d", "debug", &argparse.Options{Required: false, Help: "Generate debug output."})
 	indexes := parser.StringList("i", "indices", &argparse.Options{Required: false, Help: "The list of indices to search in Datadog. Repeat the parameter to add indices to the list", Default: defaultIndices})
-	long := parser.Flag("", "long", &argparse.Options{Required: false, Help: "Generate long output.", Default: false})
+	json := parser.Flag("j", "json", &argparse.Options{Required: false, Help: "Output messages in json format. Shows the modified log message, not the untouched message from Datadog. Useful in understanding the fields available when creating Format templates or for further processing."})
+	limit := parser.Int("l", "limit", &argparse.Options{Required: false, Help: "The maximum number of messages to request from Datadog. Must be greater then 0", Default: DefaultLimit})
+	long := parser.Flag("", "long", &argparse.Options{Required: false, Help: "Generate long output", Default: false})
+	noColor := parser.Flag("", "no-colors", &argparse.Options{Required: false, Help: "Don't use colors in output. Automatically turned off when redirecting output."})
+	query := parser.String("q", "query", &argparse.Options{Required: false, Help: "Query terms to search on (Datadog search syntax). Defaults to '*'."})
+	service := parser.String("s", "service", &argparse.Options{Required: true, Help: "The Datadog log 'service' to constrain the log search, e.g., '-s send-email'."})
+	start := parser.String("", "start", &argparse.Options{Required: false, Help: "Starting date/time to search from. Uses Datadog format. A date/time MUST be in the full format of '2024-07-11T08:45:00+00:00'", Default: DefaultRange})
+	end := parser.String("", "end", &argparse.Options{Required: false, Help: "Ending date/time to search from. Uses Datadog format. Defaults to 'now' if --start is provided but no --end", Default: "now"})
+	tail := parser.Flag("t", "tail", &argparse.Options{Required: false, Help: "Whether to tail the output. Requires a relative search."})
 	version := parser.Flag("v", "version", &argparse.Options{Required: false, Help: "Display the application version and exit."})
 
 	if err := parser.Parse(os.Args); err != nil {

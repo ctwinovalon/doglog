@@ -20,7 +20,7 @@ func listMessages(ctx context.Context, logsApi *datadogV2.LogsApi,
 			Indexes: opts.Indexes,
 		},
 		Options: &datadogV2.LogsQueryOptions{
-			Timezone: datadog.PtrString("GMT"),
+			Timezone: datadog.PtrString("UTC"),
 		},
 		Page: &datadogV2.LogsListRequestPage{
 			Limit:  datadog.PtrInt32(int32(opts.Limit)),
